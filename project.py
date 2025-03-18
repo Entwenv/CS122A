@@ -83,19 +83,98 @@ def import_data(folderName):
 
 
 def insertViewer(uid, email, nickname, street, city, state, zip_code, genres, joined_date, first, last, subscription):
-    pass
+    # 还没测试
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        # insert Users table
+        cursor.execute("""
+            INSERT INTO Users (uid, email, joined_date, nickname, street, city, state, zip, genres)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (uid, email, joined_date, nickname, street, city, state, zip_code, genres))
+
+        # insert Viewers table
+        cursor.execute("""
+            INSERT INTO Viewers (uid, subscription, first_name, last_name)
+            VALUES (%s, %s, %s, %s)
+        """, (uid, subscription, first, last))
+
+        conn.commit()
+        print("Success")
+    
+    except mysql.connector.Error as err:
+        print("Fail", err)
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def addGenre(uid, new_genre):
-    pass
+    # pass
+    # 还没测试
+
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT genres FROM Users WHERE uid = %s", (uid,))
+        result = cursor.fetchone()
+        if result:
+            current_genres = result[0]
+            updated_genres = current_genres + ";" + new_genre if current_genres else new_genre
+            cursor.execute("UPDATE Users SET genres = %s WHERE uid = %s", (updated_genres, uid))
+            conn.commit()
+            print("Success")
+        else:
+            print("Fail: User not found")
+
+    except mysql.connector.Error as err:
+        print("Fail", err)
+    
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def deleteViewer(uid):
-    pass
+    # pass
+    # 还没测试
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("DELETE FROM Users WHERE uid = %s", (uid,))
+        conn.commit()
+        print("Success" if cursor.rowcount > 0 else "Fail: User not found")
+
+    except mysql.connector.Error as err:
+        print("Fail", err)
+    
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def insertMovie(rid, website_url):
-    pass
+    # pass
+    # 还没测试
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("INSERT INTO Movies (rid, website_url) VALUES (%s, %s)", (rid, website_url))
+        conn.commit()
+        print("Success")
+
+    except mysql.connector.Error as err:
+        print("Fail", err)
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def insertSession(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device):
