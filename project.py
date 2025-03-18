@@ -243,7 +243,28 @@ def insertSession(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device)
 
 
 def updateRelease(rid, title):
-    pass
+    # pass
+    # 还没测试
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        # 检查rid是否存在
+        cursor.execute("SELECT rid FROM Releases WHERE rid = %s", (rid,))
+        if not cursor.fetchone():
+            print("Fail: Release ID does not exist")
+            return
+        
+        cursor.execute("UPDATE Releases SET title = %s WHERE rid = %s", (title, rid))
+        conn.commit()
+        print("Success")
+    
+    except mysql.connector.Error as err:
+        print("Fail", err)
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def listReleases(uid):
