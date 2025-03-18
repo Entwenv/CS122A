@@ -147,6 +147,7 @@ def deleteViewer(uid):
     cursor = conn.cursor()
 
     try:
+        # 检查uid是否存在于Users
         cursor.execute("SELECT uid FROM Users WHERE uid = %s", (uid,))
         if not cursor.fetchone():
             print("Fail: User not found")
@@ -171,7 +172,8 @@ def insertMovie(rid, website_url):
     cursor = conn.cursor()
 
     try:
-        cursor.execute("SELECT rid FROM Releases WHERE rid = %s", (rid,)) # 检查外键rid是否存在
+        # 检查外键rid是否存在于Releases
+        cursor.execute("SELECT rid FROM Releases WHERE rid = %s", (rid,))
         if not cursor.fetchone():
             print("Fail: Release ID does not exist")
             return
@@ -189,7 +191,55 @@ def insertMovie(rid, website_url):
 
 
 def insertSession(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device):
-    pass
+    # pass
+    # 还没测试
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        # 检查uid是否存在于Viewers
+        cursor.execute("SELECT uid FROM Viewers WHERE uid = %s", (uid,))
+        if not cursor.fetchone():
+            print("Fail: Viewer ID does not exist")
+            return
+        
+        # 检查rid, ep_num是否存在于Videos中
+        cursor.execute("SELECT rid FROM Videos WHERE rid = %s AND ep_num = %s", (rid, ep_num))
+        if not cursor.fetchone():
+            print("Fail: Video episode does not exist")
+            return
+        
+        # 检查时间戳是否有效
+        if initiate_at >= leave_at:
+            print("Fail: initiate_at must be earlier than leave_at")
+            return
+        
+        # 检查quality是否有效
+        valid_qualities = {"480p", "720p", "1080p"}
+        if quality not in valid_qualities:
+            print("Fail: Invalid quality. Must be one of", valid_qualities)
+            return
+        
+        # 检查device是否为有效
+        valid_devices = {"mobile", "desktop"}
+        if device not in valid_devices:
+            print("Fail: Invalid device. Must be one of", valid_devices)
+            return
+        
+        cursor.execute("""
+            INSERT INTO Sessions (sid, uid, rid, ep_num, initiate_at, leave_at, quality, device)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (sid, uid, rid, ep_num, initiate_at, leave_at, quality, device))
+
+        conn.commit()
+        print("Success")
+
+    except mysql.connector.Error as err:
+        print("Fail", err)
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def updateRelease(rid, title):
