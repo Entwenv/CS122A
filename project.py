@@ -268,7 +268,35 @@ def updateRelease(rid, title):
 
 
 def listReleases(uid):
-    pass
+    # pass
+    # 还没测试
+    conn = connect_db()
+    cursor = conn.cursor()
+
+    try:
+        # 查询uid用户评价过的release
+        cursor.execute("""
+            SELECT DISTINCT r.rid, r.genre, r.title
+            FROM Reviews rv
+            JOIN Releases r ON rv.rid = r.rid
+            WHERE rv.uid = %s
+            ORDER BY r.title ASC
+        """, (uid,))
+
+        results = cursor.fetchall()
+
+        if results:
+            for row in results:
+                print(",".join(map(str, row)))
+        else:
+            print("Fail: No reviewed releases found")
+
+    except mysql.connector.Error as err:
+        print("Fail", err)
+
+    finally:
+        cursor.close()
+        conn.close()
 
 
 def popularRelease(N):
