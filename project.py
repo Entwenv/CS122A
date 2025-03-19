@@ -452,19 +452,19 @@ def listReleases(uid):
 
 
 def popularRelease(N):
-    pass
+    print("Working")
 
 
 def releaseTitle(sid):
-    pass
+    print("Working")
 
 
 def activeViewer(N, start_date, end_date):
-    pass
+    print("Working")
 
 
 def videosViewed(rid):
-    pass
+    print("Working")
 
 
 def main():
