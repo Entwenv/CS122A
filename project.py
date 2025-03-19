@@ -240,9 +240,27 @@ def addGenre(uid, new_genre):
     try:
         cursor.execute("SELECT genres FROM Users WHERE uid = %s", (uid,))
         result = cursor.fetchone()
+
         if result:
             current_genres = result[0]
-            updated_genres = current_genres + ";" + new_genre if current_genres else new_genre
+
+            # None值处理
+            if current_genres is None:
+                current_genres_list = []
+            else:
+                # 分割现有genres并转换为小写
+                current_genres_list = [g.strip().lower() for g in current_genres.split(';')]
+
+            # 统一new_genre格式
+            new_genre_lower = new_genre.strip().lower()
+
+            # 检查是否已存在
+            if new_genre_lower in current_genres_list:
+                print("Fail")
+                return
+
+            # 添加新genre
+            updated_genres = ";".join(current_genres_list + [new_genre_lower])
             cursor.execute("UPDATE Users SET genres = %s WHERE uid = %s", (updated_genres, uid))
             conn.commit()
             print("Success")
