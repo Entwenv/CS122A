@@ -3,6 +3,7 @@ import os
 import csv
 import mysql.connector
 
+
 def connect_db():
     return mysql.connector.connect(
         user='test',
@@ -10,10 +11,131 @@ def connect_db():
         database='cs122a'
     )
 
+
 def import_data(folderName):
     try:
         conn = connect_db()
         cursor = conn.cursor()
+
+        drop_statements = [
+            "DROP TABLE IF EXISTS Reviews",
+            "DROP TABLE IF EXISTS Sessions",
+            "DROP TABLE IF EXISTS Videos",
+            "DROP TABLE IF EXISTS Series",
+            "DROP TABLE IF EXISTS Movies",
+            "DROP TABLE IF EXISTS Releases",
+            "DROP TABLE IF EXISTS Viewers",
+            "DROP TABLE IF EXISTS Producers",
+            "DROP TABLE IF EXISTS Users"
+        ]
+        for drop_sql in drop_statements:
+            cursor.execute(drop_sql)
+        conn.commit()
+
+        create_statements = [
+            """
+            CREATE TABLE Users (
+              uid INTEGER,
+              nickname VARCHAR(20),
+              email VARCHAR(125),
+              street VARCHAR(50),
+              city VARCHAR(50),
+              state VARCHAR(50),
+              zip VARCHAR(50),
+              genres TEXT NOT NULL,
+              joined_date DATE,
+              PRIMARY KEY (uid)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Producers (
+              uid INTEGER,
+              company VARCHAR(125),
+              bio VARCHAR(255),
+              PRIMARY KEY (uid),
+              FOREIGN KEY (uid) REFERENCES Users(uid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Viewers (
+              uid INTEGER,
+              first_name VARCHAR(20),
+              last_name VARCHAR(20),
+              subscription ENUM('free', 'monthly', 'yearly'),
+              PRIMARY KEY (uid),
+              FOREIGN KEY (uid) REFERENCES Users(uid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Releases (
+              rid INTEGER,
+              producer_uid INTEGER NOT NULL,
+              title VARCHAR(20),
+              genre VARCHAR(20),
+              release_date DATE,
+              PRIMARY KEY (rid),
+              FOREIGN KEY (producer_uid) REFERENCES Producers(uid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Movies (
+              rid INTEGER,
+              website_url VARCHAR(255),
+              PRIMARY KEY (rid),
+              FOREIGN KEY (rid) REFERENCES Releases(rid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Series (
+              rid INTEGER,
+              introduction TEXT,
+              PRIMARY KEY (rid),
+              FOREIGN KEY (rid) REFERENCES Releases(rid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Videos (
+              ep_num INTEGER NOT NULL,
+              rid INTEGER NOT NULL,
+              title VARCHAR(20),
+              length REAL,
+              PRIMARY KEY (ep_num, rid),
+              FOREIGN KEY (rid) REFERENCES Releases(rid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Sessions (
+              sid INTEGER,
+              quality ENUM('480p', '720p', '1080p'),
+              device ENUM('mobile', 'desktop'),
+              ep_num INTEGER NOT NULL,
+              rid INTEGER NOT NULL,
+              uid INTEGER NOT NULL,
+              initiate_at DATETIME,
+              leave_at DATETIME,
+              PRIMARY KEY (sid),
+              FOREIGN KEY (uid) REFERENCES Viewers(uid) ON DELETE CASCADE,
+              FOREIGN KEY (ep_num, rid) REFERENCES Videos(ep_num, rid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """,
+            """
+            CREATE TABLE Reviews (
+              rvid INTEGER,
+              rating INTEGER,
+              body VARCHAR(125),
+              uid INTEGER NOT NULL,
+              posted_at DATETIME,
+              rid INTEGER NOT NULL,
+              PRIMARY KEY (rvid),
+              FOREIGN KEY (uid) REFERENCES Viewers(uid) ON DELETE CASCADE,
+              FOREIGN KEY (rid) REFERENCES Releases(rid) ON DELETE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            """
+        ]
+
+        for create_sql in create_statements:
+            cursor.execute(create_sql)
+        conn.commit()
 
         mapping = {
             "Users": (
@@ -58,25 +180,20 @@ def import_data(folderName):
             file_path = os.path.join(folderName, csv_file)
 
             if not os.path.exists(file_path):
-                print(f"File not found: {file_path}")
                 continue
 
             with open(file_path, 'r', encoding='utf-8') as f:
                 reader = csv.reader(f)
-                next(reader)  # 跳过表头
+                next(reader)
                 rows = [tuple(row) for row in reader]
 
                 if rows:
                     cursor.executemany(insert_query, rows)
                     conn.commit()
-                    print(f"Inserted {len(rows)} rows into {table}")
-                else:
-                    print(f"No data in {csv_file}")
 
         print("Success")
     except Exception as e:
-        print("Fail", e)
-        raise
+        print("Fail")
     finally:
         cursor.close()
         conn.close()
@@ -104,7 +221,7 @@ def insertViewer(uid, email, nickname, street, city, state, zip_code, genres, jo
 
         conn.commit()
         print("Success")
-    
+
     except mysql.connector.Error as err:
         print("Fail", err)
 
@@ -134,7 +251,7 @@ def addGenre(uid, new_genre):
 
     except mysql.connector.Error as err:
         print("Fail", err)
-    
+
     finally:
         cursor.close()
         conn.close()
@@ -152,14 +269,14 @@ def deleteViewer(uid):
         if not cursor.fetchone():
             print("Fail: User not found")
             return
-        
+
         cursor.execute("DELETE FROM Users WHERE uid = %s", (uid,))
         conn.commit()
         print("Success")
 
     except mysql.connector.Error as err:
         print("Fail", err)
-    
+
     finally:
         cursor.close()
         conn.close()
@@ -177,7 +294,7 @@ def insertMovie(rid, website_url):
         if not cursor.fetchone():
             print("Fail: Release ID does not exist")
             return
-        
+
         cursor.execute("INSERT INTO Movies (rid, website_url) VALUES (%s, %s)", (rid, website_url))
         conn.commit()
         print("Success")
@@ -202,30 +319,30 @@ def insertSession(sid, uid, rid, ep_num, initiate_at, leave_at, quality, device)
         if not cursor.fetchone():
             print("Fail: Viewer ID does not exist")
             return
-        
+
         # 检查rid, ep_num是否存在于Videos中
         cursor.execute("SELECT rid FROM Videos WHERE rid = %s AND ep_num = %s", (rid, ep_num))
         if not cursor.fetchone():
             print("Fail: Video episode does not exist")
             return
-        
+
         # 检查时间戳是否有效
         if initiate_at >= leave_at:
             print("Fail: initiate_at must be earlier than leave_at")
             return
-        
+
         # 检查quality是否有效
         valid_qualities = {"480p", "720p", "1080p"}
         if quality not in valid_qualities:
             print("Fail: Invalid quality. Must be one of", valid_qualities)
             return
-        
+
         # 检查device是否为有效
         valid_devices = {"mobile", "desktop"}
         if device not in valid_devices:
             print("Fail: Invalid device. Must be one of", valid_devices)
             return
-        
+
         cursor.execute("""
             INSERT INTO Sessions (sid, uid, rid, ep_num, initiate_at, leave_at, quality, device)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -254,11 +371,11 @@ def updateRelease(rid, title):
         if not cursor.fetchone():
             print("Fail: Release ID does not exist")
             return
-        
+
         cursor.execute("UPDATE Releases SET title = %s WHERE rid = %s", (title, rid))
         conn.commit()
         print("Success")
-    
+
     except mysql.connector.Error as err:
         print("Fail", err)
 
@@ -330,7 +447,8 @@ def main():
         import_data(args[0])
     elif func == "insertViewer":
         if len(args) != 12:
-            print("Usage: python3 project.py insertViewer <uid> <email> <nickname> <street> <city> <state> <zip> <genres> <joined_date> <first> <last> <subscription>")
+            print(
+                "Usage: python3 project.py insertViewer <uid> <email> <nickname> <street> <city> <state> <zip> <genres> <joined_date> <first> <last> <subscription>")
             return
         insertViewer(*args)
     elif func == "addGenre":
@@ -350,7 +468,8 @@ def main():
         insertMovie(*args)
     elif func == "insertSession":
         if len(args) != 8:
-            print("Usage: python3 project.py insertSession <sid> <uid> <rid> <ep_num> <initiate_at> <leave_at> <quality> <device>")
+            print(
+                "Usage: python3 project.py insertSession <sid> <uid> <rid> <ep_num> <initiate_at> <leave_at> <quality> <device>")
             return
         insertSession(*args)
     elif func == "updateRelease":
@@ -385,6 +504,7 @@ def main():
         videosViewed(*args)
     else:
         print("Unknown function")
+
 
 if __name__ == "__main__":
     main()
