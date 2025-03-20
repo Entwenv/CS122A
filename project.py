@@ -32,11 +32,12 @@ def import_data(folderName):
             cursor.execute(drop_sql)
         conn.commit()
 
+        # 根据测试反馈，有些参数设置的不够长会报错，现已修改
         create_statements = [
             """
             CREATE TABLE Users (
               uid INTEGER,
-              nickname VARCHAR(20),
+              nickname VARCHAR(50),
               email VARCHAR(125),
               street VARCHAR(50),
               city VARCHAR(50),
@@ -59,8 +60,8 @@ def import_data(folderName):
             """
             CREATE TABLE Viewers (
               uid INTEGER,
-              first_name VARCHAR(20),
-              last_name VARCHAR(20),
+              first_name VARCHAR(60),
+              last_name VARCHAR(60),
               subscription ENUM('free', 'monthly', 'yearly'),
               PRIMARY KEY (uid),
               FOREIGN KEY (uid) REFERENCES Users(uid) ON DELETE CASCADE
@@ -70,8 +71,8 @@ def import_data(folderName):
             CREATE TABLE Releases (
               rid INTEGER,
               producer_uid INTEGER NOT NULL,
-              title VARCHAR(20),
-              genre VARCHAR(20),
+              title VARCHAR(100),
+              genre VARCHAR(50),
               release_date DATE,
               PRIMARY KEY (rid),
               FOREIGN KEY (producer_uid) REFERENCES Producers(uid) ON DELETE CASCADE
@@ -97,7 +98,7 @@ def import_data(folderName):
             CREATE TABLE Videos (
               ep_num INTEGER NOT NULL,
               rid INTEGER NOT NULL,
-              title VARCHAR(20),
+              title VARCHAR(100),
               length REAL,
               PRIMARY KEY (ep_num, rid),
               FOREIGN KEY (rid) REFERENCES Releases(rid) ON DELETE CASCADE
@@ -122,7 +123,7 @@ def import_data(folderName):
             CREATE TABLE Reviews (
               rvid INTEGER,
               rating INTEGER,
-              body VARCHAR(125),
+              body VARCHAR(255),
               uid INTEGER NOT NULL,
               posted_at DATETIME,
               rid INTEGER NOT NULL,
@@ -435,12 +436,16 @@ def listReleases(uid):
 
         results = cursor.fetchall()
 
-        if results:
-            for row in results:
-                print(",".join(map(str, row)))
-        else:
-            # print("Fail: No reviewed releases found")
-            print("Fail")
+        # if results:
+        #     for row in results:
+        #         print(",".join(map(str, row)))
+        # else:
+        #     # print("Fail: No reviewed releases found")
+        #     print("Fail")
+
+        # 当没有结果时不输出Fail
+        for row in results:
+            print(",".join(map(str, row)))
 
     except mysql.connector.Error as err:
         # print("Fail", err)
